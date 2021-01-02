@@ -3,6 +3,7 @@ import gzip
 
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def get_extracted_dataframe(path: str) -> pd.DataFrame:
@@ -20,6 +21,7 @@ def get_num_duplicated(df: pd.DataFrame) -> pd.Series:
 
 def plot_class_distribution(df: pd.DataFrame, class_name: str) -> None:
     sns.displot(df, x=class_name)
+    plt.show()
 
 
 #%%
