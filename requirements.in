@@ -2,3 +2,5 @@ pandas
 seaborn
 numpy
 tensorflow
+scikit-learn
+imbalanced-learn
