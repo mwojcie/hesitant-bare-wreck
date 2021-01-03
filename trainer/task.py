@@ -69,7 +69,7 @@ def eval_input_fn():
     return input_fn(df_test)
 
 
-model.train(input_fn=train_input_fn, steps=200)
+model.train(input_fn=train_input_fn, steps=500)
 results = model.evaluate(input_fn=eval_input_fn, steps=1)
 for key in sorted(results):
     print("%s: %s" % (key, results[key]))
