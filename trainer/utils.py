@@ -2,7 +2,7 @@ import glob
 import gzip
 import logging
 import os
-from typing import List, Tuple, Any
+from typing import List
 
 import pandas as pd
 from imblearn.over_sampling import SMOTE
@@ -10,12 +10,11 @@ from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-
 # Set constants
 DATA_DIRECTORY = "../data/"
 GROUPBY_COL = "customer_id"
-MODE_COLS = [GROUPBY_COL, "payment_id", "transmission_id", "platform_id",
-             "order_hour"]
+MODE_COLS = [GROUPBY_COL, "city_id", "restaurant_id", "payment_id",
+             "transmission_id", "platform_id", "order_hour"]
 MAX_COLS = [GROUPBY_COL, "customer_order_rank"]
 SUM_COLS = [GROUPBY_COL, "is_failed", "voucher_amount", "delivery_fee",
             "amount_paid"]
@@ -94,16 +93,14 @@ def get_labeled_dataset(
     return final_df
 
 
-def preprocess_aggregated_dataset(
-        aggregated_df: pd.DataFrame
-) -> Tuple[Any, Any, Any, Any]:
+def preprocess_aggregated_dataset(aggregated_df: pd.DataFrame) -> None:
     """Split and preprocess training set."""
     logger.info("Starting data pre-processing")
     numeric_cols = ["voucher_amount", "delivery_fee", "amount_paid"]
-    categorical_cols = ["payment_id", "transmission_id", "platform_id"]
-    y = aggregated_df.pop("is_returning_customer")
+    x = aggregated_df.copy()
+    y = x.pop("is_returning_customer")
     logger.info("One-Hot encoding categorical features")
-    x = pd.get_dummies(aggregated_df, columns=categorical_cols, drop_first=True)
+
     logger.info("Splitting data into training and test set")
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, random_state=42, test_size=0.2)
@@ -116,12 +113,15 @@ def preprocess_aggregated_dataset(
     logger.info("Oversampling training set to balance classes")
     oversampler = SMOTE()
     x_train, y_train = oversampler.fit_resample(x_train, y_train)
-    return x_train, x_test, y_train, y_test
+    train_data = pd.concat([x_train, y_train], axis=1)
+    test_data = pd.concat([x_test, y_test], axis=1)
+    train_data.columns = aggregated_df.columns
+    test_data.columns = aggregated_df.columns
+    train_data.to_csv(os.path.join(DATA_DIRECTORY, "train_data.csv"))
+    test_data.to_csv(os.path.join(DATA_DIRECTORY, "test_data.csv"))
 
 
-def prepare_training_data(
-        data_directory_path: str
-) -> Tuple[Any, Any, Any, Any]:
+def prepare_training_data(data_directory_path: str) -> None:
     """Match files in specified directory and tie together all the functions."""
     labeled_data = get_extracted_dataframe(
         next(glob.iglob(
@@ -141,8 +141,6 @@ def prepare_training_data(
     else:
         logger.info("Reading previously saved aggregated order dataset")
         aggregated_order_data = pd.read_csv(
-            filepath_or_buffer=AGGREGATED_DATA_PATH)
+            filepath_or_buffer=AGGREGATED_DATA_PATH, index_col=0)
     label_order_data = get_labeled_dataset(aggregated_order_data, labeled_data)
-    x_train, x_test, y_train, y_test = \
-        preprocess_aggregated_dataset(label_order_data)
-    return x_train, x_test, y_train, y_test
+    preprocess_aggregated_dataset(label_order_data)
