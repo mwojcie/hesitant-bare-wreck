@@ -8,44 +8,25 @@ import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+
 
 # Set constants
+DATA_DIRECTORY = "../data/"
 GROUPBY_COL = "customer_id"
-
-MODE_COLS = [
-    GROUPBY_COL,
-    "restaurant_id",
-    "city_id",
-    "payment_id",
-    "transmission_id",
-    "platform_id",
-    "order_hour"
-]
-
-MAX_COLS = [
-    GROUPBY_COL,
-    "customer_order_rank"
-]
-
-SUM_COLS = [
-    GROUPBY_COL,
-    "is_failed",
-    "voucher_amount",
-    "delivery_fee",
-    "amount_paid"
-]
+MODE_COLS = [GROUPBY_COL, "payment_id", "transmission_id", "platform_id",
+             "order_hour"]
+MAX_COLS = [GROUPBY_COL, "customer_order_rank"]
+SUM_COLS = [GROUPBY_COL, "is_failed", "voucher_amount", "delivery_fee",
+            "amount_paid"]
+AGGREGATED_DATA_PATH = os.path.join(DATA_DIRECTORY, "aggregated_order_data.csv")
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-consoleHandler = logging.StreamHandler()
-consoleHandler.setLevel(logging.INFO)
-logger.addHandler(consoleHandler)
-formatter = logging.Formatter(
-    '%(asctime)s  %(name)s  %(levelname)s: %(message)s'
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s  %(name)s  %(levelname)s: %(message)s'
 )
-consoleHandler.setFormatter(formatter)
+logger = logging.getLogger(__name__)
 
 
 def get_extracted_dataframe(path: str) -> pd.DataFrame:
@@ -98,6 +79,7 @@ def get_aggregated_order_data(
         GROUPBY_COL, as_index=False).agg("max")
     aggregated_df = mode_df.merge(cumulative_df, on=GROUPBY_COL).\
         merge(max_df, on=GROUPBY_COL)
+    aggregated_df.to_csv(path_or_buf=AGGREGATED_DATA_PATH)
     return aggregated_df
 
 
@@ -118,41 +100,48 @@ def preprocess_aggregated_dataset(
     """Split and preprocess training set."""
     logger.info("Starting data pre-processing")
     numeric_cols = ["voucher_amount", "delivery_fee", "amount_paid"]
+    categorical_cols = ["payment_id", "transmission_id", "platform_id"]
     y = aggregated_df.pop("is_returning_customer")
-    x = aggregated_df
+    logger.info("One-Hot encoding categorical features")
+    x = pd.get_dummies(aggregated_df, columns=categorical_cols, drop_first=True)
     logger.info("Splitting data into training and test set")
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, random_state=42, test_size=0.2)
     logger.info("Scaling numeric features")
     numeric_scaler = ColumnTransformer([
-        ("numeric_scaler", MinMaxScaler(), numeric_cols)],
-        remainder="drop")
-    train_numeric_cols_scaled = numeric_scaler.fit_transform(x_train)
-    test_numeric_cols_scaled = numeric_scaler.transform(x_test)
-    x_train.loc[:, numeric_cols] = train_numeric_cols_scaled
-    x_test.loc[:, numeric_cols] = test_numeric_cols_scaled
+        ("numeric_scaler", StandardScaler(), numeric_cols)],
+        remainder="passthrough")
+    numeric_scaler.fit_transform(x_train)
+    numeric_scaler.transform(x_test)
     logger.info("Oversampling training set to balance classes")
     oversampler = SMOTE()
     x_train, y_train = oversampler.fit_resample(x_train, y_train)
     return x_train, x_test, y_train, y_test
 
 
-def prepare_training_data(data_directory_path: str):
+def prepare_training_data(
+        data_directory_path: str
+) -> Tuple[Any, Any, Any, Any]:
     """Match files in specified directory and tie together all the functions."""
     labeled_data = get_extracted_dataframe(
         next(glob.iglob(
             os.path.join(data_directory_path, "*_labeled_data.csv.gz"))
         )
     )
-    order_data = get_extracted_dataframe(
-        next(glob.iglob(
-            os.path.join(data_directory_path, "*_order_data.csv.gz"))
+    if not os.path.exists(AGGREGATED_DATA_PATH):
+        order_data = get_extracted_dataframe(
+            next(glob.iglob(
+                os.path.join(data_directory_path, "*_order_data.csv.gz"))
+            )
         )
-    )
-    clean_order_data = get_clean_dataset(order_data)
-    aggregated_order_data = get_aggregated_order_data(
-        clean_order_data, SUM_COLS, MODE_COLS, MAX_COLS
-    )
+        clean_order_data = get_clean_dataset(order_data)
+        aggregated_order_data = get_aggregated_order_data(
+            clean_order_data, SUM_COLS, MODE_COLS, MAX_COLS
+        )
+    else:
+        logger.info("Reading previously saved aggregated order dataset")
+        aggregated_order_data = pd.read_csv(
+            filepath_or_buffer=AGGREGATED_DATA_PATH)
     label_order_data = get_labeled_dataset(aggregated_order_data, labeled_data)
     x_train, x_test, y_train, y_test = \
         preprocess_aggregated_dataset(label_order_data)

@@ -1,2 +1,3 @@
 .idea/
 notebooks/.ipynb_checkpoints/
+data/aggregated_order_data.csv
