@@ -102,8 +102,6 @@ def preprocess_aggregated_dataset(aggregated_df: pd.DataFrame) -> None:
     numeric_cols = ["voucher_amount", "delivery_fee", "amount_paid"]
     x = aggregated_df.copy()
     y = x.pop("is_returning_customer")
-    logger.info("One-Hot encoding categorical features")
-
     logger.info("Splitting data into training and test set")
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, random_state=42, test_size=0.2)
