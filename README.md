@@ -1,6 +1,6 @@
 ## Summary of data transformations
-1. Decided to aggregate order data on customer level
-1. Some variables were aggregated by addition, like cumulative amount paid,
+1. Decided to aggregate order data on customer_id level
+1. Some variables were aggregated by addition, like cumulative amount_paid,
 for some variables most popular value for a customer was selected, for some maximum value (like order rank)
 1. Aggregated customer dataset was split into train and test sets with 80/20 ratio
 1. Numeric variables were MinMax scaled, train set was oversampled with SMOTE algorithm
