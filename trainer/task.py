@@ -8,17 +8,6 @@ from trainer.utils import DATA_DIRECTORY
 from trainer.utils import prepare_training_data
 from trainer.model import model
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s  %(name)s  %(levelname)s: %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-if not os.path.exists(os.path.join(DATA_DIRECTORY, "train_data.csv")):
-    prepare_training_data(DATA_DIRECTORY)
-logger.info("Training the model")
-
 # Define column names for the data sets.
 COLUMNS = ["city_id", "restaurant_id", "payment_id", "transmission_id",
            "platform_id", "order_hour", "is_failed", "voucher_amount",
@@ -30,14 +19,26 @@ CATEGORICAL_COLUMNS = ["city_id", "restaurant_id", "payment_id",
 CONTINUOUS_COLUMNS = ["order_hour", "is_failed", "voucher_amount",
                       "delivery_fee", "amount_paid", "customer_order_rank"]
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s  %(name)s  %(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Prepare dataset if not already prepared
+if not os.path.exists(os.path.join(DATA_DIRECTORY, "train_data.csv")):
+    prepare_training_data(DATA_DIRECTORY)
+logger.info("Training the model")
+
 # Read the training and test data sets into Pandas dataframe.
 train_file = os.path.join(DATA_DIRECTORY, "train_data.csv")
 test_file = os.path.join(DATA_DIRECTORY, "test_data.csv")
 df_train = pd.read_csv(
-    train_file, names=COLUMNS, skipinitialspace=True, skiprows=1
+    train_file, names=COLUMNS, skipinitialspace=True, skiprows=1, index_col=0
 )
 df_test = pd.read_csv(
-    test_file, names=COLUMNS, skipinitialspace=True, skiprows=1
+    test_file, names=COLUMNS, skipinitialspace=True, skiprows=1, index_col=0
 )
 
 

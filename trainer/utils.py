@@ -2,16 +2,19 @@ import glob
 import gzip
 import logging
 import os
+import pathlib
 from typing import List
 
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 # Set constants
-DATA_DIRECTORY = "../data/"
+DATA_DIRECTORY = os.path.join(
+    pathlib.Path(__file__).parent.absolute(), "..", "data"
+)
 GROUPBY_COL = "customer_id"
 MODE_COLS = [GROUPBY_COL, "city_id", "restaurant_id", "payment_id",
              "transmission_id", "platform_id", "order_hour"]
@@ -106,7 +109,7 @@ def preprocess_aggregated_dataset(aggregated_df: pd.DataFrame) -> None:
         x, y, random_state=42, test_size=0.2)
     logger.info("Scaling numeric features")
     numeric_scaler = ColumnTransformer([
-        ("numeric_scaler", StandardScaler(), numeric_cols)],
+        ("numeric_scaler", MinMaxScaler(), numeric_cols)],
         remainder="passthrough")
     numeric_scaler.fit_transform(x_train)
     numeric_scaler.transform(x_test)
@@ -124,9 +127,7 @@ def preprocess_aggregated_dataset(aggregated_df: pd.DataFrame) -> None:
 def prepare_training_data(data_directory_path: str) -> None:
     """Match files in specified directory and tie together all the functions."""
     labeled_data = get_extracted_dataframe(
-        next(glob.iglob(
-            os.path.join(data_directory_path, "*_labeled_data.csv.gz"))
-        )
+        next(glob.iglob(os.path.join(data_directory_path, "*_labeled_data.csv.gz")))
     )
     if not os.path.exists(AGGREGATED_DATA_PATH):
         order_data = get_extracted_dataframe(

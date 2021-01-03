@@ -10,5 +10,6 @@ model = tf.estimator.DNNLinearCombinedClassifier(
     model_dir=model_dir,
     linear_feature_columns=wide_columns,
     dnn_feature_columns=deep_columns,
-    dnn_hidden_units=[64, 32]
+    dnn_hidden_units=[128, 64, 32],
+    dnn_dropout=0.2
 )
